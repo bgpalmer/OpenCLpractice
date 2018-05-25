@@ -124,6 +124,8 @@ int main(int argc, char ** argv) {
 
 	/* Create Buffers for Kernel - for Arguments and for returned calculations */
 
+	/* Another memory object type is image types - we use buffers here because our data is 1-dimensional */
+
 	/* Contains argument values, and will be used to store final calculations */
 	cl_mem aBuffer = clCreateBuffer( context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * testDataSize, a.data(), &status );
 	if ( status != CL_SUCCESS ) cl_error( "clCreateBuffer()", status ); 
@@ -144,8 +146,12 @@ int main(int argc, char ** argv) {
 	clSetKernelArg( kernel, 2, sizeof(cl_mem), &two );
 
 	const size_t globalWorkSize[] = { testDataSize, 0, 0 };
+
+	/* Enqueue Command to be executed - returns immediately */
 	status = clEnqueueNDRangeKernel( queue, kernel, 1, nullptr, globalWorkSize, nullptr, 0, nullptr, nullptr );
 	if ( status != CL_SUCCESS ) cl_error( "clEnqueueNDRangeKernel()", status ); 
+
+	/* NEED TO READ MEMORY FROM BUFFER HERE - STORE RESULTS IN HOST MEMORY */
 
 	clReleaseCommandQueue(queue);
 	clReleaseMemObject(bBuffer);
