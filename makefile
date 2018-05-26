@@ -6,4 +6,4 @@ all:
 	g++ ${SRCS} -o ${EXEC} ${FRWK} ${LNKS} 
 
 practice:
-	g++ pOpenCL.cpp -o prac -framework OpenCL
+	g++ pOpenCL.cpp -o prac -framework OpenCL -std=c++11

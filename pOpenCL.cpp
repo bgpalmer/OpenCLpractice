@@ -35,7 +35,7 @@ cl_program CreateProgram (const std::string& source, cl_context context) {
 
 	/* Create Program OBJECT(not yet compiled) for context(platforms & devices we're using) using loaded source code */ 
 
-	cl_program program = clCreateProgramWithSource (context, 1, sources, lengths, &status);
+	cl_program program = clCreateProgramWithSource(context, 1, sources, lengths, &status);
 	if ( status != CL_SUCCESS ) cl_error( "clCreateProgramWithSource()", status ); 
 
 	return program;
@@ -66,14 +66,6 @@ int main(int argc, char ** argv) {
 	status = clGetDeviceIDs(platformIds[ 0 ], CL_DEVICE_TYPE_ALL, device_id_count, deviceIds.data(), nullptr);
 	if ( status != CL_SUCCESS ) cl_error( "clGetDeviceIDs()", status );
 
-	/* Test Data */
-	size_t testDataSize = 1 << 10;
-	std::vector<float> a(testDataSize), b(testDataSize);
-
-	for ( int i = 0; i < testDataSize; i++ ) {
-		a[ i ] = static_cast<float>( 23 ^ i );
-		b[ i ] = static_cast<float>( 19 ^ i );
-	}
 
 	/* Context properties
 
@@ -122,21 +114,34 @@ int main(int argc, char ** argv) {
 	cl_kernel kernel = clCreateKernel( program, "SAXPY", &status );
 	if ( status != CL_SUCCESS ) cl_error( "clCreateKernel()", status ); 
 
-	/* Create Buffers for Kernel - for Arguments and for returned calculations */
 
-	/* Another memory object type is image types - we use buffers here because our data is 1-dimensional */
+	/* Test Data */
+
+	size_t testDataSize = 1 << 4;
+	std::cout << "Data size: " << testDataSize << std::endl;
+	std::vector<float> a(testDataSize), b(testDataSize), result(testDataSize);
+
+	for ( int i = 0; i < testDataSize; i++ ) {
+		a[ i ] = static_cast<float>( 23 ^ i );
+		b[ i ] = static_cast<float>( 19 ^ i );
+	}
+
+	/* Create Buffers for Kernel - for Arguments and for returned calculations 
+		 - NOTE: Another memory object type is image types - we use buffers here because our data is 1-dimensional
+	*/
+
 
 	/* Contains argument values, and will be used to store final calculations */
 	cl_mem aBuffer = clCreateBuffer( context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * testDataSize, a.data(), &status );
 	if ( status != CL_SUCCESS ) cl_error( "clCreateBuffer()", status ); 
 
 	/* Contains only argument values */
-	cl_mem bBuffer = clCreateBuffer( context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * testDataSize, a.data(), &status );
+	cl_mem bBuffer = clCreateBuffer( context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(float) * testDataSize, b.data(), &status );
 	if ( status != CL_SUCCESS ) cl_error( "clCreateBuffer()", status );
 
 	/* Set Kernel Arguments
 
-	SAXPY -> aBuffer[i] = 2*bBuffer[i] + aBuffer[i]
+	SAXPY -> aBuffer[i] = k*bBuffer[i] + aBuffer[i]
 
 	*/
 
@@ -144,6 +149,16 @@ int main(int argc, char ** argv) {
 	clSetKernelArg( kernel, 1, sizeof(cl_mem), &bBuffer );
 	static const float two = 2.0f;
 	clSetKernelArg( kernel, 2, sizeof(cl_mem), &two );
+
+	for (const int i : a) {
+		std::cout << i << " ";
+	} std::cout << std::endl;
+
+	for (const int i : b) {
+		std::cout << i << " ";
+	} std::cout << std::endl;
+
+	/* Works size - We are working in one dimension(with buffers vs. images) so we only set the first position. */
 
 	const size_t globalWorkSize[] = { testDataSize, 0, 0 };
 
@@ -153,9 +168,17 @@ int main(int argc, char ** argv) {
 
 	/* NEED TO READ MEMORY FROM BUFFER HERE - STORE RESULTS IN HOST MEMORY */
 
-	clReleaseCommandQueue(queue);
+	status = clEnqueueReadBuffer(queue, bBuffer, CL_TRUE, 0, sizeof(float) * testDataSize, result.data(), 0, nullptr, nullptr);
+	if ( status != CL_SUCCESS ) cl_error( "clEnqueueReadBuffer()", status ); 
+
+	for (const int i : result) {
+		std::cout << i << " ";
+	} std::cout << std::endl;
+
 	clReleaseMemObject(bBuffer);
 	clReleaseMemObject(aBuffer);
+
+	clReleaseCommandQueue(queue);
 
 	clReleaseKernel(kernel);
 	clReleaseProgram(program);
